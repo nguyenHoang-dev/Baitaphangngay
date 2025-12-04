@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum TrangThaiThamGia {
+  CHO_DUYET
+  DA_DUYET
+  TU_CHOI
+}
+
+enum XepLoai {
+  XUAT_SAC
+  TOT
+  KHA
+  TRUNG_BINH
+  YEU
+}
+
+// Models
+
+model TaiKhoan {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sinhVien SinhVien?
+  quanTri  QuanTri?
+  sessions Session[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         TaiKhoan @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Lop {
+  id       String     @id @default(uuid())
+  tenLop   String
+  khoa     String     // Department/Faculty
+  sinhViens SinhVien[]
+  quanTri  QuanTri?
+}
+
+model SinhVien {
+  id        String   @id @default(uuid())
+  maSv      String   @unique
+  hoTen     String
+  ngaySinh  DateTime?
+  gioiTinh  String?
+  lopId     String
+  taiKhoanId String  @unique
+  
+  // Relations
+  lop       Lop      @relation(fields: [lopId], references: [id])
+  taiKhoan  TaiKhoan @relation(fields: [taiKhoanId], references: [id], onDelete: Cascade)
+  thamGias  ThamGia[]
+  diemRenLuyens DiemRenLuyen[]
+}
+
+model QuanTri {
+  id        String   @id @default(uuid())
+  hoTen     String
+  taiKhoanId String  @unique
+  lopId     String?  @unique // Optional: Advisor for a specific class
+
+  // Relations
+  taiKhoan  TaiKhoan @relation(fields: [taiKhoanId], references: [id])
+  lop       Lop?     @relation(fields: [lopId], references: [id])
+}
+
+model HocKy {
+  id          String   @id @default(uuid())
+  tenHocKy    String
+  namHoc      String
+  ngayBatDau  DateTime
+  ngayKetThuc DateTime
+  isCurrent   Boolean  @default(false)
+
+  // Relations
+  hoatDongs     HoatDong[]
+  diemRenLuyens DiemRenLuyen[]
+}
+
+model HoatDong {
+  id          String   @id @default(uuid())
+  tenHoatDong String
+  moTa        String?
+  ngayDienRa  DateTime
+  ngayKetThuc DateTime? // Optional end date
+  diaDiem     String?
+  diemCong    Int
+  hocKyId     String
+  loaiTieuChi String // "HOC_TAP", "KY_LUAT", "NGOAI_KHOA", "KY_NANG"
+
+  // Relations
+  hocKy    HocKy     @relation(fields: [hocKyId], references: [id])
+  thamGias ThamGia[]
+}
+
+model ThamGia {
+  id          String           @id @default(uuid())
+  sinhVienId  String
+  hoatDongId  String
+  trangThai   TrangThaiThamGia @default(CHO_DUYET)
+  minhChung   String?          // URL to image/proof
+  ngayDangKy  DateTime         @default(now())
+  
+  // Relations
+  sinhVien SinhVien @relation(fields: [sinhVienId], references: [id], onDelete: Cascade)
+  hoatDong HoatDong @relation(fields: [hoatDongId], references: [id], onDelete: Cascade)
+
+  @@unique([sinhVienId, hoatDongId])
+}
+
+model DiemRenLuyen {
+  id          String   @id @default(uuid())
+  sinhVienId  String
+  hocKyId     String
+  tongDiem    Int      @default(0)
+  xepLoai     XepLoai?
+  chiTietDiem Json?    // Stores detailed scores per criteria: { "HOC_TAP": 20, "NGOAI_KHOA": 15, ... }
+
+  // Relations
+  sinhVien SinhVien @relation(fields: [sinhVienId], references: [id], onDelete: Cascade)
+  hocKy    HocKy    @relation(fields: [hocKyId], references: [id])
+
+  @@unique([sinhVienId, hocKyId])
+}
