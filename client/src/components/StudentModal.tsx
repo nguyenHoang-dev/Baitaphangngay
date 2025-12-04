@@ -80,7 +80,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ isOpen, onClose, onSuccess,
             if (initialData) {
                 await api.put(`/users/${initialData.id}`, formData);
             } else {
-                await api.post('/users/students', formData);
+                await api.post('/users/', formData);
             }
             onSuccess();
             onClose();
